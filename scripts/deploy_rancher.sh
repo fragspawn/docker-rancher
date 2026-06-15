@@ -49,6 +49,10 @@ if [[ -n "${RANCHER_BOOTSTRAP_PASSWORD}" ]]; then
   helm_args+=(--set-string "bootstrapPassword=${RANCHER_BOOTSTRAP_PASSWORD}")
 fi
 
+if [[ -n "${DOMAIN}" ]]; then
+  helm_args+=(--set-string "hostname=${DOMAIN}")
+fi
+
 helm "${helm_args[@]}" >/dev/null
 kubectl -n cattle-system rollout status deploy/rancher --timeout=10m
 
@@ -66,4 +70,4 @@ if [[ "${RESTORE_ON_DEPLOY}" == "true" ]]; then
 fi
 
 echo "Rancher deployment complete."
-echo "Access Rancher UI through Traefik on: https://<host>:7010"
+echo "Access Rancher UI through Traefik on: https://${DOMAIN:-<host>}"
