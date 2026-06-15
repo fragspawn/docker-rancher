@@ -30,6 +30,7 @@ services:
     restart: "no"
     working_dir: /workspace
     environment:
+      DOMAIN: ${DOMAIN:-localhost}
       RANCHER_BOOTSTRAP_PASSWORD: ${RANCHER_BOOTSTRAP_PASSWORD:-adminadmin}
       SERVER_URL: ${SERVER_URL:-https://localhost:7010}
     volumes:
