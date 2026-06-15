@@ -1,4 +1,4 @@
-hostname: ${DOMAIN}
+hostname: localhost
 replicas: 1
 tls: external
 ingress:
