@@ -16,7 +16,7 @@ services:
       - "6443:6443"
       - "443:443"
     healthcheck:
-      test: ["CMD-SHELL", "kubectl get node >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "kubectl get --raw='/readyz' >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 30

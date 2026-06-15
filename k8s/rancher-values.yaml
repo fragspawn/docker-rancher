@@ -1,4 +1,4 @@
-hostname: ${DOMAIN}
+hostname: rancher.staging.csds.qld.edu.au
 replicas: 1
 tls: external
 ingress:
