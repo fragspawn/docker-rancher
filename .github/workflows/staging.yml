@@ -1,0 +1,42 @@
+name: Staging Webhook
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  on-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send webhooks to Komodo staging
+        run: |
+          set -euo pipefail
+
+          payload=$(jq -cn \
+            --arg event "push_to_staging" \
+            --arg repository "${{ github.repository }}" \
+            --arg ref "${{ github.ref }}" \
+            --arg ref_name "${{ github.ref_name }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg head_commit_message "${{ github.event.head_commit.message }}" \
+            '{
+              event: $event,
+              repository: $repository,
+              ref: $ref,
+              ref_name: $ref_name,
+              sha: $sha,
+              actor: $actor,
+              head_commit_message: $head_commit_message
+            }')
+
+          signature="sha256=$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "${{ secrets.KOMODO_WEBHOOK_SECRET }}" | awk '{print $2}')"
+
+          curl --fail --show-error \
+            --globoff \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: $signature" \
+            -d "$payload" \
+            "${{ secrets.KOMODO_BUILD }}"

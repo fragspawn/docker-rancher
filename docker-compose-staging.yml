@@ -1,0 +1,95 @@
+services:
+  k3s:
+    image: rancher/k3s:v1.31.6-k3s1
+    container_name: k3s
+    privileged: true
+    command:
+      - server
+      - --write-kubeconfig=/output/kubeconfig.yaml
+      - --write-kubeconfig-mode=666
+      - --tls-san=k3s
+      - --node-name=staging-k3s
+    volumes:
+      - k3s-data:/var/lib/rancher/k3s
+      - k3s-config:/output
+    ports:
+      - "6443:6443"
+      - "443:443"
+    healthcheck:
+      test: ["CMD-SHELL", "kubectl get node >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+  rancher-deploy:
+    build:
+      context: .
+      dockerfile: Dockerfile.staging.k8s
+    container_name: rancher-deploy
+    depends_on:
+      k3s:
+        condition: service_healthy
+    restart: "no"
+    working_dir: /workspace
+    environment:
+      RANCHER_BOOTSTRAP_PASSWORD: ${RANCHER_BOOTSTRAP_PASSWORD:-adminadmin}
+      SERVER_URL: ${SERVER_URL:-https://rancher.staging.csds.qld.edu.au:443}
+    volumes:
+      - k3s-config:/kube
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "cp /kube/kubeconfig.yaml /tmp/kubeconfig.yaml && sed -i 's/127.0.0.1/k3s/g' /tmp/kubeconfig.yaml && export KUBECONFIG=/tmp/kubeconfig.yaml && ./scripts/deploy_rancher.sh"
+  rancher-restore:
+    build:
+      context: .
+      dockerfile: Dockerfile.staging.k8s
+    container_name: rancher-restore
+    depends_on:
+      k3s:
+        condition: service_healthy
+    restart: "no"
+    profiles: ["ops"]
+    working_dir: /workspace
+    volumes:
+      - k3s-config:/kube
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "cp /kube/kubeconfig.yaml /tmp/kubeconfig.yaml && sed -i 's/127.0.0.1/k3s/g' /tmp/kubeconfig.yaml && export KUBECONFIG=/tmp/kubeconfig.yaml && ./scripts/restore_rancher_config.sh"
+  rancher-backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.staging.k8s
+    container_name: rancher-backup
+    depends_on:
+      k3s:
+        condition: service_healthy
+    restart: "no"
+    profiles: ["ops"]
+    working_dir: /workspace
+    volumes:
+      - k3s-config:/kube
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "cp /kube/kubeconfig.yaml /tmp/kubeconfig.yaml && sed -i 's/127.0.0.1/k3s/g' /tmp/kubeconfig.yaml && export KUBECONFIG=/tmp/kubeconfig.yaml && ./scripts/backup_rancher_config.sh"
+  rancher-cert:
+    build:
+      context: .
+      dockerfile: Dockerfile.staging.k8s
+    container_name: rancher-cert
+    depends_on:
+      k3s:
+        condition: service_healthy
+    restart: "no"
+    profiles: ["ops"]
+    working_dir: /workspace
+    environment:
+      DOMAIN: ${DOMAIN:-rancher.staging.csds.qld.edu.au}
+      ACME_EMAIL: ${ACME_EMAIL:-health.email@health.qld.gov.au}
+    volumes:
+      - k3s-config:/kube
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "cp /kube/kubeconfig.yaml /tmp/kubeconfig.yaml && sed -i 's/127.0.0.1/k3s/g' /tmp/kubeconfig.yaml && export KUBECONFIG=/tmp/kubeconfig.yaml && ./scripts/apply_letsencrypt_cert.sh"
+volumes:
+  k3s-config:
+  k3s-data:

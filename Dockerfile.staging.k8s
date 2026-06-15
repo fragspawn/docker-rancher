@@ -1,0 +1,4 @@
+FROM alpine/k8s:1.31.3
+WORKDIR /workspace
+COPY . .
+RUN apk add --no-cache bash jq
